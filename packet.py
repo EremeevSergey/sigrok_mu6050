@@ -247,12 +247,13 @@ class Mpu6050Packet:
         self.clear()
 
     def clear(self):
-        self.__currentReg = 0
+        self.__startReg = 256
+        self.__currentReg = 256
         self.__ioDirection = 'WRITE'
         self.__ioType      = 'REG'
         self.__data = []
-        self.__ss = None
-        self.__es = None
+        self.__startPacketSample = 0
+        self.__emdPacketSample = 0
         self.__warningString = ''
 
     def setDirection(self, dir):
@@ -265,16 +266,16 @@ class Mpu6050Packet:
         return self.__ioType
 
     def setStartSample(self, ss):
-        self.__ss = ss
+        self.__startPacketSample = ss
 
     def startSample(self):
-        return self.__ss
+        return self.__startPacketSample
 
     def setEndSample(self, es):
-        self.__es = es
+        self.__emdPacketSample = es
 
     def endSample(self):
-        return self.__es
+        return self.__emdPacketSample
 
     def warning(self):
         return self.__warningString
@@ -287,26 +288,29 @@ class Mpu6050Packet:
         val = _reg_names.get(reg)
         if val is None:
             self.__addWarning("Unknown registry number %02x" % reg)
+        if self.__startReg>255: self.__startReg = reg
         self.__currentReg = reg
+
+    def startRegister(self):
+        return self.__startReg
 
     def currentRegister(self):
         return self.__currentReg
 
-    def __registerName(self,reg):
+    def registerName(self,reg=None):
+        if reg is None:
+            if len(self.__data)>0: reg = self.__data[-1].Reg
+            else:                  reg = self.__currentReg
         val = _reg_names.get(reg)
         if val is not None: return val[0]
         return "REG " + self.__byteToHexString(self.__currentReg)
 
-    def registerName(self):
-        reg = self.__currentReg
-        if len(self.__data)>0:
-            reg = self.__data[-1].Reg
-        return self.__registerName(reg)
-
-    def registerType(self):
-        if len(self.__data)>0:
-            val = _reg_names.get(self.__data[-1])
-            if val is not None: return val[1]
+    def registerType(self,reg=None):
+        if reg is None:
+            if len(self.__data)>0: reg = self.__data[-1].Reg
+            else:                  reg = self.__currentReg
+        val = _reg_names.get(reg)
+        if val is not None: return val[1]
         return "???"
 
     def bitNames(self):

@@ -97,7 +97,8 @@ class Decoder(srd.Decoder):
         self.put(self.bits[bit1][1], self.bits[bit2][2], self.out_ann, data)
 
     def showReg(self):#my_code
-        self.putd(7, 0, [subSytemNameToAnn(self.packet.registerType()),[self.packet.registerName()]])
+        reg = self.packet.startRegister()
+        self.putd(7, 0, [subSytemNameToAnn(self.packet.registerType(reg)),[self.packet.registerName(reg)]])
 
     def showRegBits(self):#my_code
         bits = self.packet.bitNames()
