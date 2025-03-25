@@ -255,6 +255,8 @@ class Mpu6050Packet:
         self.__startPacketSample = 0
         self.__emdPacketSample = 0
         self.__warningString = ''
+        self.__lastRegister=256
+        self.__lastRegisterFormat = None
 
     def setDirection(self, dir):
         self.__ioDirection = dir
@@ -283,9 +285,18 @@ class Mpu6050Packet:
     def isWarning(self):
         return len(self.__warningString)>0
 
+    def __getRegisterData(self, reg):
+        if reg==self.__lastRegister: return self.__lastRegisterFormat
+        self.__lastRegister=reg
+        if reg is not None:
+            self.__lastRegisterFormat = _reg_names.get(reg)
+        else:
+            self.__lastRegisterFormat = None
+        return self.__lastRegisterFormat
+
     def setRegister(self, reg):
         reg = reg & 0xFF
-        val = _reg_names.get(reg)
+        val = self.__getRegisterData(reg)
         if val is None:
             self.__addWarning("Unknown registry number %02x" % reg)
         if self.__startReg>255: self.__startReg = reg
@@ -301,7 +312,7 @@ class Mpu6050Packet:
         if reg is None:
             if len(self.__data)>0: reg = self.__data[-1].Reg
             else:                  reg = self.__currentReg
-        val = _reg_names.get(reg)
+        val = self.__getRegisterData(reg)
         if val is not None: return val[0]
         return "REG " + self.__byteToHexString(self.__currentReg)
 
@@ -309,14 +320,14 @@ class Mpu6050Packet:
         if reg is None:
             if len(self.__data)>0: reg = self.__data[-1].Reg
             else:                  reg = self.__currentReg
-        val = _reg_names.get(reg)
+        val = self.__getRegisterData(reg)
         if val is not None: return val[1]
         return "???"
 
     def bitNames(self):
         if self.__currentReg is not None and len(self.__data)>0:
             data = self.__data[-1]
-            val = _reg_names.get(data.Reg)
+            val = self.__getRegisterData(data.Reg)
             if val is not None and val[2] is not None:
                 return val[2]
             else:
@@ -330,7 +341,9 @@ class Mpu6050Packet:
                 self.__pmBankAddress = self.__pmBankAddress & 0xFF
 
         self.__data.append(self.Data(self.__currentReg,byte,self.__pmBankNumber*256 + self.__pmBankAddress))
+
         old_reg = _reg_names.get(self.__currentReg)
+        r_name,r_type,r_bits,r_incr = ('','','',False)
         if old_reg is not None:
             r_name,r_type,r_bits,r_incr = old_reg
         if self.__currentReg   == 0x6d: #BANK_SEL
